@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id               Int      @id @default(autoincrement())
+  name             String
+  slug             String   @unique
+  description      String
+  longDescription  String
+  price            Float
+  comparePrice     Float?
+  image            String
+  images           String   // JSON array of image URLs
+  category         String
+  tags             String   // JSON array of tags
+  rating           Float    @default(0)
+  reviewCount      Int      @default(0)
+  stock            Int      @default(0)
+  featured         Boolean  @default(false)
+  version          String   @default("v1")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  reviews          Review[]
+  orderItems       OrderItem[]
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userName  String
+  rating    Int
+  title     String
+  comment   String
+  createdAt DateTime @default(now())
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  items     CartItem[]
+}
+
+model CartItem {
+  id            Int    @id @default(autoincrement())
+  cartId        String
+  cart          Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId     Int
+  quantity      Int
+  productName   String
+  productPrice  Float
+  productImage  String
+  createdAt     DateTime @default(now())
+}
+
+model Order {
+  id            Int      @id @default(autoincrement())
+  orderNumber   String   @unique
+  customerName  String
+  customerEmail String
+  customerPhone String?
+  address       String?
+  city          String?
+  status        String   @default("pending")
+  total         Float
+  createdAt     DateTime @default(now())
+  items         OrderItem[]
+}
+
+model OrderItem {
+  id           Int     @id @default(autoincrement())
+  orderId      Int
+  order        Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId    Int
+  product      Product @relation(fields: [productId], references: [id])
+  productName  String
+  productPrice Float
+  quantity     Int
+}
