@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+*.md
+.env
+.env.*
+!.env.example
+npm-debug.log*
+dev.log
+server.log
+.cursor

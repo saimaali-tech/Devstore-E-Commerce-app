@@ -1,7 +1,11 @@
 {
-  "name": "nextjs_tailwind_shadcn_ts",
-  "version": "0.2.0",
+  "name": "devstore",
+  "version": "1.0.0",
   "private": true,
+  "description": "Versioned fullstack demo: Next.js storefront + Express API + PostgreSQL with Docker",
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
     "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
@@ -10,7 +14,10 @@
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:reset": "prisma migrate reset"
+    "db:reset": "prisma migrate reset",
+    "compose:up": "docker compose up --build -d",
+    "compose:down": "docker compose down",
+    "compose:setup": "docker compose --profile setup run --rm db-setup"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -88,6 +95,7 @@
     "eslint": "^9",
     "eslint-config-next": "^16.1.1",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "tw-animate-css": "^1.3.5",
     "typescript": "^5"
   }

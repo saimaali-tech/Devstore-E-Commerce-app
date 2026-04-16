@@ -13,6 +13,7 @@ import {
   Star,
   Check,
   Package,
+  Heart,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,8 @@ import {
 import { StarRating } from '@/components/store/StarRating';
 import { useStore } from '@/store';
 import type { Product, Review } from '@/types';
+import { useAppRelease, releaseLevel } from '@/context/ReleaseContext';
+import { apiUrl } from '@/lib/api-url';
 
 interface ProductDetailResponse {
   product: Product;
@@ -42,7 +45,7 @@ interface ProductDetailResponse {
 }
 
 async function fetchProductDetail(id: number): Promise<ProductDetailResponse> {
-  const res = await fetch(`/api/products/${id}`);
+  const res = await fetch(apiUrl(`/api/products/${id}`));
   if (!res.ok) throw new Error('Failed to fetch product');
   return res.json();
 }
@@ -83,6 +86,9 @@ export function ProductDetailView() {
   const { selectedProductId, setCurrentView, setSelectedProductId, cartId, setCartCount } =
     useStore();
   const queryClient = useQueryClient();
+  const release = useAppRelease();
+  const showWishlist = releaseLevel(release) >= 2;
+  const [wishBusy, setWishBusy] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [addingToCart, setAddingToCart] = useState(false);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
@@ -110,7 +116,7 @@ export function ProductDetailView() {
       title: string;
       comment: string;
     }) => {
-      const res = await fetch(`/api/products/${selectedProductId}/reviews`, {
+      const res = await fetch(apiUrl(`/api/products/${selectedProductId}/reviews`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(reviewData),
@@ -155,7 +161,7 @@ export function ProductDetailView() {
     if (!product || addingToCart || product.stock === 0) return;
     setAddingToCart(true);
     try {
-      const res = await fetch(`/api/cart/${cartId}/items`, {
+      const res = await fetch(apiUrl(`/api/cart/${cartId}/items`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ productId: product.id, quantity }),
@@ -174,6 +180,24 @@ export function ProductDetailView() {
       toast.error('Failed to add to cart');
     } finally {
       setAddingToCart(false);
+    }
+  };
+
+  const handleWishlist = async () => {
+    if (!product || !showWishlist || !cartId || wishBusy) return;
+    setWishBusy(true);
+    try {
+      const res = await fetch(apiUrl(`/api/wishlist/${cartId}`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: product.id }),
+      });
+      if (res.ok) toast.success('Saved to wishlist');
+      else toast.error('Could not save to wishlist');
+    } catch {
+      toast.error('Could not save to wishlist');
+    } finally {
+      setWishBusy(false);
     }
   };
 
@@ -432,24 +456,39 @@ export function ProductDetailView() {
                 <Plus className="size-4" />
               </Button>
             </div>
-            <Button
-              size="lg"
-              className="flex-1 gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-              disabled={product.stock === 0 || addingToCart}
-              onClick={handleAddToCart}
-            >
-              {addingToCart ? (
-                <>
-                  <Check className="size-4" />
-                  Added to Cart
-                </>
-              ) : (
-                <>
-                  <ShoppingCart className="size-4" />
-                  Add to Cart - ${(product.price * quantity).toFixed(2)}
-                </>
+            <div className="flex flex-1 flex-col gap-2 sm:flex-row">
+              <Button
+                size="lg"
+                className="flex-1 gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                disabled={product.stock === 0 || addingToCart}
+                onClick={handleAddToCart}
+              >
+                {addingToCart ? (
+                  <>
+                    <Check className="size-4" />
+                    Added to Cart
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart className="size-4" />
+                    Add to Cart - ${(product.price * quantity).toFixed(2)}
+                  </>
+                )}
+              </Button>
+              {showWishlist && (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="gap-2 border-rose-500/40 text-rose-600 hover:bg-rose-500/10"
+                  type="button"
+                  disabled={wishBusy}
+                  onClick={() => void handleWishlist()}
+                >
+                  <Heart className="size-4" />
+                  Wishlist
+                </Button>
               )}
-            </Button>
+            </div>
           </div>
 
           {/* Long Description Tabs */}

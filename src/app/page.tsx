@@ -12,7 +12,9 @@ import { ProductDetailView } from '@/components/store/ProductDetailView';
 import { CartView } from '@/components/store/CartView';
 import { CheckoutView } from '@/components/store/CheckoutView';
 import { OrderConfirmationView } from '@/components/store/OrderConfirmationView';
+import { WishlistView } from '@/components/store/WishlistView';
 import { useStore } from '@/store';
+import { apiUrl } from '@/lib/api-url';
 
 function createQueryClient() {
   return new QueryClient({
@@ -40,7 +42,7 @@ function AppContent() {
   const fetchCartCount = useCallback(async () => {
     if (!cartId) return;
     try {
-      const res = await fetch(`/api/cart/${cartId}`);
+      const res = await fetch(apiUrl(`/api/cart/${cartId}`));
       if (res.ok) {
         const cart = await res.json();
         setCartCount(cart.items?.length || 0);
@@ -76,6 +78,8 @@ function AppContent() {
         return <CheckoutView key="checkout" />;
       case 'order-confirmation':
         return <OrderConfirmationView key="order-confirmation" />;
+      case 'wishlist':
+        return <WishlistView key="wishlist" />;
       default:
         return <HomeView key="home" />;
     }

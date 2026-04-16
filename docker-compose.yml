@@ -1,0 +1,67 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: devstore
+      POSTGRES_PASSWORD: devstore
+      POSTGRES_DB: devstore
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devstore -d devstore"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: postgresql://devstore:devstore@postgres:5432/devstore
+      APP_RELEASE: ${APP_RELEASE:-v3}
+      IMAGE_TAG: ${IMAGE_TAG:-local}
+      WEB_ORIGINS: ${WEB_ORIGINS:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+        APP_RELEASE: ${APP_RELEASE:-v3}
+    ports:
+      - "3000:3000"
+    environment:
+      APP_RELEASE: ${APP_RELEASE:-v3}
+      NEXT_PUBLIC_APP_RELEASE: ${APP_RELEASE:-v3}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+    depends_on:
+      - api
+
+  # One-time: docker compose --profile setup run --rm db-setup
+  db-setup:
+    profiles: ["setup"]
+    image: node:20-bookworm-slim
+    working_dir: /w
+    volumes:
+      - .:/w
+    environment:
+      DATABASE_URL: postgresql://devstore:devstore@postgres:5432/devstore
+    command: >
+      sh -c "npm ci --no-fund --no-audit
+      && npx prisma migrate deploy
+      && npx tsx prisma/seed.ts"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

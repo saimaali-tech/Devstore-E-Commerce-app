@@ -19,9 +19,10 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useStore } from '@/store';
 import type { Cart } from '@/types';
+import { apiUrl } from '@/lib/api-url';
 
 async function fetchCart(cartId: string): Promise<Cart> {
-  const res = await fetch(`/api/cart/${cartId}`);
+  const res = await fetch(apiUrl(`/api/cart/${cartId}`));
   if (!res.ok) throw new Error('Failed to fetch cart');
   return res.json();
 }
@@ -70,7 +71,7 @@ export function CartView() {
   const updateQuantity = async (itemId: number, newQuantity: number) => {
     if (newQuantity < 1) return;
     try {
-      const res = await fetch(`/api/cart/${cartId}/items/${itemId}`, {
+      const res = await fetch(apiUrl(`/api/cart/${cartId}/items/${itemId}`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ quantity: newQuantity }),
@@ -89,7 +90,7 @@ export function CartView() {
 
   const removeItem = async (itemId: number, itemName: string) => {
     try {
-      const res = await fetch(`/api/cart/${cartId}/items/${itemId}`, {
+      const res = await fetch(apiUrl(`/api/cart/${cartId}/items/${itemId}`), {
         method: 'DELETE',
       });
       if (res.ok) {

@@ -1,22 +1,24 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import Link from 'next/link';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Package,
   Search,
   ShoppingCart,
   Menu,
-  X,
   Home,
   Store,
+  Heart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { useStore } from '@/store';
+import type { ViewType } from '@/types';
+import { useAppRelease, releaseLevel } from '@/context/ReleaseContext';
+import { apiUrl } from '@/lib/api-url';
 
 export function Header() {
   const {
@@ -25,10 +27,23 @@ export function Header() {
     searchQuery,
     setSearchQuery,
     cartCount,
+    cartId,
   } = useStore();
+
+  const release = useAppRelease();
+  const showWishlist = releaseLevel(release) >= 2;
+  const [wishlistCount, setWishlistCount] = useState(0);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchQuery);
+
+  useEffect(() => {
+    if (!showWishlist || !cartId) return;
+    void fetch(apiUrl(`/api/wishlist/${cartId}`))
+      .then((r) => (r.ok ? r.json() : { items: [] }))
+      .then((d) => setWishlistCount((d.items as unknown[])?.length ?? 0))
+      .catch(() => {});
+  }, [showWishlist, cartId, currentView]);
 
   const handleSearch = useCallback(() => {
     setSearchQuery(localSearch);
@@ -46,7 +61,7 @@ export function Header() {
   );
 
   const navigate = useCallback(
-    (view: 'home' | 'shop') => {
+    (view: ViewType) => {
       setCurrentView(view);
       setMobileMenuOpen(false);
     },
@@ -56,6 +71,9 @@ export function Header() {
   const navLinks = [
     { label: 'Home', view: 'home' as const, icon: Home },
     { label: 'Shop', view: 'shop' as const, icon: Store },
+    ...(showWishlist
+      ? [{ label: 'Wishlist', view: 'wishlist' as const, icon: Heart }]
+      : []),
   ];
 
   return (
@@ -77,6 +95,9 @@ export function Header() {
           <span className="text-xl font-bold tracking-tight">
             Dev<span className="text-emerald-600">Store</span>
           </span>
+          <Badge variant="outline" className="ml-2 text-[10px] uppercase">
+            {release}
+          </Badge>
         </button>
 
         {/* Desktop Navigation */}
@@ -97,6 +118,22 @@ export function Header() {
 
         {/* Desktop Search + Cart */}
         <div className="hidden items-center gap-3 md:flex">
+          {showWishlist && (
+            <Button
+              variant={currentView === 'wishlist' ? 'secondary' : 'ghost'}
+              size="sm"
+              className="relative gap-2"
+              onClick={() => setCurrentView('wishlist')}
+            >
+              <Heart className="size-4 text-rose-500" />
+              Wishlist
+              {wishlistCount > 0 && (
+                <Badge className="ml-1 rounded-full bg-rose-500 px-1.5 text-[10px] text-white border-0">
+                  {wishlistCount > 99 ? '99+' : wishlistCount}
+                </Badge>
+              )}
+            </Button>
+          )}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input

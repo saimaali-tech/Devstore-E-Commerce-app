@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { ReleaseProvider } from "@/context/ReleaseContext";
+
+export const dynamic = "force-dynamic";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,12 +37,17 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const appRelease =
+    process.env.APP_RELEASE ??
+    process.env.NEXT_PUBLIC_APP_RELEASE ??
+    "v3";
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
-        {children}
+        <ReleaseProvider value={appRelease}>{children}</ReleaseProvider>
         <Toaster />
       </body>
     </html>

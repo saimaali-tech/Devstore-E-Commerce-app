@@ -83,7 +83,14 @@ export interface ProductsResponse {
   totalPages: number;
 }
 
-export type ViewType = 'home' | 'shop' | 'product-detail' | 'cart' | 'checkout' | 'order-confirmation';
+export type ViewType =
+  | 'home'
+  | 'shop'
+  | 'product-detail'
+  | 'cart'
+  | 'checkout'
+  | 'order-confirmation'
+  | 'wishlist';
 
 export interface StoreState {
   currentView: ViewType;

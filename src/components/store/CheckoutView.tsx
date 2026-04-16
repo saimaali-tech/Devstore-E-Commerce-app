@@ -18,9 +18,10 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useStore } from '@/store';
 import type { Cart } from '@/types';
+import { apiUrl } from '@/lib/api-url';
 
 async function fetchCart(cartId: string): Promise<Cart> {
-  const res = await fetch(`/api/cart/${cartId}`);
+  const res = await fetch(apiUrl(`/api/cart/${cartId}`));
   if (!res.ok) throw new Error('Failed to fetch cart');
   return res.json();
 }
@@ -95,7 +96,7 @@ export function CheckoutView() {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch('/api/orders', {
+      const res = await fetch(apiUrl('/api/orders'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

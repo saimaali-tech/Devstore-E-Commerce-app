@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { ShoppingCart, Eye, Check } from 'lucide-react';
+import { ShoppingCart, Eye, Check, Heart } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,6 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { StarRating } from '@/components/store/StarRating';
 import { useStore } from '@/store';
 import type { Product } from '@/types';
+import { useAppRelease, releaseLevel } from '@/context/ReleaseContext';
+import { apiUrl } from '@/lib/api-url';
 
 interface ProductCardProps {
   product: Product;
@@ -21,6 +23,9 @@ export function ProductCard({ product }: ProductCardProps) {
   const { setCurrentView, setSelectedProductId, cartId, setCartCount } = useStore();
   const queryClient = useQueryClient();
   const [addingToCart, setAddingToCart] = useState(false);
+  const release = useAppRelease();
+  const showWishlist = releaseLevel(release) >= 2;
+  const [wishBusy, setWishBusy] = useState(false);
 
   const discount = product.comparePrice
     ? Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)
@@ -32,7 +37,7 @@ export function ProductCard({ product }: ProductCardProps) {
     setAddingToCart(true);
 
     try {
-      const res = await fetch(`/api/cart/${cartId}/items`, {
+      const res = await fetch(apiUrl(`/api/cart/${cartId}/items`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ productId: product.id, quantity: 1 }),
@@ -58,6 +63,28 @@ export function ProductCard({ product }: ProductCardProps) {
   const handleViewDetails = () => {
     setSelectedProductId(product.id);
     setCurrentView('product-detail');
+  };
+
+  const handleWishlist = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!showWishlist || !cartId || wishBusy) return;
+    setWishBusy(true);
+    try {
+      const res = await fetch(apiUrl(`/api/wishlist/${cartId}`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: product.id }),
+      });
+      if (res.ok) {
+        toast.success('Saved to wishlist');
+      } else {
+        toast.error('Could not save to wishlist');
+      }
+    } catch {
+      toast.error('Could not save to wishlist');
+    } finally {
+      setWishBusy(false);
+    }
   };
 
   const stockLabel =
@@ -112,6 +139,18 @@ export function ProductCard({ product }: ProductCardProps) {
 
           {/* Badges */}
           <div className="absolute left-3 top-3 flex flex-col gap-1.5">
+            {showWishlist && (
+              <Button
+                size="icon"
+                variant="secondary"
+                className="size-9 rounded-full shadow-md"
+                onClick={handleWishlist}
+                disabled={wishBusy}
+                aria-label="Add to wishlist"
+              >
+                <Heart className="size-4 text-rose-500" />
+              </Button>
+            )}
             {product.featured && (
               <Badge className="bg-emerald-600 text-white border-0 text-[10px]">
                 Featured

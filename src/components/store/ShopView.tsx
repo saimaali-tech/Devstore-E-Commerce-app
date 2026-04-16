@@ -17,6 +17,7 @@ import { ProductCard } from '@/components/store/ProductCard';
 import { CategoryFilter } from '@/components/store/CategoryFilter';
 import { useStore } from '@/store';
 import type { ProductsResponse, Category } from '@/types';
+import { apiUrl } from '@/lib/api-url';
 
 async function fetchProducts(params: {
   search?: string;
@@ -32,13 +33,13 @@ async function fetchProducts(params: {
   if (params.page) searchParams.set('page', String(params.page));
   if (params.limit) searchParams.set('limit', String(params.limit));
 
-  const res = await fetch(`/api/products?${searchParams.toString()}`);
+  const res = await fetch(apiUrl(`/api/products?${searchParams.toString()}`));
   if (!res.ok) throw new Error('Failed to fetch products');
   return res.json();
 }
 
 async function fetchCategories(): Promise<Category[]> {
-  const res = await fetch('/api/categories');
+  const res = await fetch(apiUrl('/api/categories'));
   if (!res.ok) throw new Error('Failed to fetch categories');
   return res.json();
 }

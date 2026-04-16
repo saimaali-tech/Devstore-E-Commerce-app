@@ -9,23 +9,25 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ProductCard } from '@/components/store/ProductCard';
 import { useStore } from '@/store';
 import type { Product, Category } from '@/types';
+import { apiUrl } from '@/lib/api-url';
+import { useAppRelease, releaseLevel } from '@/context/ReleaseContext';
 
 async function fetchFeaturedProducts(): Promise<Product[]> {
-  const res = await fetch('/api/products?featured=true&limit=4');
+  const res = await fetch(apiUrl('/api/products?featured=true&limit=4'));
   if (!res.ok) throw new Error('Failed to fetch featured products');
   const data = await res.json();
   return data.products;
 }
 
 async function fetchNewArrivals(): Promise<Product[]> {
-  const res = await fetch('/api/products?sort=newest&limit=4');
+  const res = await fetch(apiUrl('/api/products?sort=newest&limit=4'));
   if (!res.ok) throw new Error('Failed to fetch new arrivals');
   const data = await res.json();
   return data.products;
 }
 
 async function fetchCategories(): Promise<Category[]> {
-  const res = await fetch('/api/categories');
+  const res = await fetch(apiUrl('/api/categories'));
   if (!res.ok) throw new Error('Failed to fetch categories');
   return res.json();
 }
@@ -64,6 +66,7 @@ function ProductGridSkeleton() {
 
 export function HomeView() {
   const { setCurrentView, setSelectedCategory } = useStore();
+  const release = useAppRelease();
 
   const {
     data: featuredProducts,
@@ -88,6 +91,16 @@ export function HomeView() {
 
   return (
     <div className="flex flex-col">
+      {releaseLevel(release) >= 3 && (
+        <div className="border-b border-border bg-emerald-500/5 px-4 py-2 text-center text-xs text-muted-foreground sm:text-sm">
+          <span className="font-medium text-emerald-700 dark:text-emerald-400">
+            V3 reliability track:
+          </span>{' '}
+          Orders are monitored end-to-end. See{' '}
+          <code className="rounded bg-muted px-1">/api/ops/summary</code> on the API for a
+          24-hour operations snapshot (Grafana-friendly JSON).
+        </div>
+      )}
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="relative min-h-[480px] sm:min-h-[560px] lg:min-h-[600px]">

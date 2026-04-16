@@ -17,15 +17,18 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useStore } from '@/store';
 import type { Order } from '@/types';
+import { apiUrl } from '@/lib/api-url';
+import { useAppRelease, releaseLevel } from '@/context/ReleaseContext';
 
 async function fetchOrder(orderNumber: string): Promise<Order> {
-  const res = await fetch(`/api/orders/${orderNumber}`);
+  const res = await fetch(apiUrl(`/api/orders/${orderNumber}`));
   if (!res.ok) throw new Error('Failed to fetch order');
   return res.json();
 }
 
 export function OrderConfirmationView() {
   const { lastOrderNumber, setCurrentView } = useStore();
+  const release = useAppRelease();
 
   const {
     data: order,
@@ -191,6 +194,23 @@ export function OrderConfirmationView() {
                   Order Status: {order.status}
                 </span>
               </div>
+
+              {releaseLevel(release) >= 3 && (
+                <div className="rounded-lg border border-dashed border-emerald-500/30 bg-muted/30 p-4 text-left">
+                  <p className="mb-2 text-sm font-semibold text-foreground">
+                    Fulfillment timeline (V3)
+                  </p>
+                  <ol className="list-decimal space-y-1 pl-4 text-sm text-muted-foreground">
+                    <li>Confirmed — current step</li>
+                    <li>Warehouse pick & pack</li>
+                    <li>Shipped with tracking email</li>
+                  </ol>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    This block is a product-facing example of a release that adds operational
+                    transparency; wire it to real carrier APIs when you extend the project.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
