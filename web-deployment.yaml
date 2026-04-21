@@ -1,0 +1,21 @@
+# web-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devstore-web
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: devstore-web
+  template:
+    metadata:
+      labels:
+        app: devstore-web
+    spec:
+      containers:
+      - name: web
+        image: devstore-web:latest   # will be updated by pipeline
+        ports:
+        - containerPort: 3000
