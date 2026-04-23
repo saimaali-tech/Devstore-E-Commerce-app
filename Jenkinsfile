@@ -20,7 +20,7 @@ pipeline {
   }
 
   environment {
-    IMAGE_TAG = "${env.GIT_COMMIT?.take(7) ?: "build-${env.BUILD_NUMBER}"}"
+    IMAGE_TAG = "${env.GIT_COMMIT ? env.GIT_COMMIT.take(7) : "build-${env.BUILD_NUMBER}"}"
     ECR_REGISTRY = "${params.AWS_ACCOUNT_ID}.dkr.ecr.${params.AWS_REGION}.amazonaws.com"
     WEB_IMAGE = "${ECR_REGISTRY}/${params.ECR_REPO_WEB}"
     API_IMAGE = "${ECR_REGISTRY}/${params.ECR_REPO_API}"
@@ -60,6 +60,8 @@ pipeline {
           sh '''
             set -e
 
+            aws sts get-caller-identity
+
             aws ecr get-login-password --region $AWS_REGION | \
             docker login --username AWS --password-stdin $ECR_REGISTRY
           '''
@@ -94,19 +96,27 @@ pipeline {
             echo "Updating kubeconfig..."
             aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
 
-            echo "Deploying Web..."
+            echo "Ensuring namespace exists..."
+            kubectl get ns $K8S_NAMESPACE || kubectl create ns $K8S_NAMESPACE
+
+            echo "Applying Kubernetes manifests (if any)..."
+            if [ -d "k8s" ]; then
+              kubectl apply -f k8s/ -n $K8S_NAMESPACE
+            fi
+
+            echo "Updating Web Deployment Image..."
             kubectl set image deployment/$K8S_WEB_DEPLOYMENT \
               $K8S_WEB_CONTAINER=$WEB_IMAGE:$IMAGE_TAG \
               -n $K8S_NAMESPACE
 
-            echo "Deploying API..."
+            echo "Updating API Deployment Image..."
             kubectl set image deployment/$K8S_API_DEPLOYMENT \
               $K8S_API_CONTAINER=$API_IMAGE:$IMAGE_TAG \
               -n $K8S_NAMESPACE
 
             echo "Waiting for rollout..."
-            kubectl rollout status deployment/$K8S_WEB_DEPLOYMENT -n $K8S_NAMESPACE --timeout=180s
-            kubectl rollout status deployment/$K8S_API_DEPLOYMENT -n $K8S_NAMESPACE --timeout=180s
+            kubectl rollout status deployment/$K8S_WEB_DEPLOYMENT -n $K8S_NAMESPACE --timeout=180s || exit 1
+            kubectl rollout status deployment/$K8S_API_DEPLOYMENT -n $K8S_NAMESPACE --timeout=180s || exit 1
           '''
         }
       }

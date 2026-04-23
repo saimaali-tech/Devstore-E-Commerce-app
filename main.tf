@@ -1,7 +1,4 @@
-# ========================================================
-# SINGLE FILE TERRAFORM - ECR + EKS for devstore app
-# Perfect for your Jenkins CI/CD pipeline
-# ========================================================
+
 
 terraform {
   required_version = ">= 1.6.0"
@@ -14,7 +11,7 @@ terraform {
   }
 }
 
-# ====================== VARIABLES ======================
+
 variable "region" {
   description = "AWS Region"
   type        = string
@@ -45,12 +42,12 @@ variable "environment" {
   default     = "dev"
 }
 
-# ====================== PROVIDER ======================
+
 provider "aws" {
   region = var.region
 }
 
-# ====================== VPC ======================
+
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 5.0"
@@ -81,7 +78,7 @@ module "vpc" {
   }
 }
 
-# ====================== ECR Repositories ======================
+
 resource "aws_ecr_repository" "web" {
   name                 = var.ecr_repo_web
   image_tag_mutability = "MUTABLE"
@@ -112,7 +109,7 @@ resource "aws_ecr_repository" "api" {
   }
 }
 
-# ====================== EKS Cluster ======================
+
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 20.0"
@@ -146,7 +143,7 @@ module "eks" {
   }
 }
 
-# ====================== OUTPUTS ======================
+
 output "ecr_web_repository_url" {
   description = "Web ECR Repository URL (use in Jenkins)"
   value       = aws_ecr_repository.web.repository_url
