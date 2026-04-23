@@ -16,6 +16,29 @@ spec:
     spec:
       containers:
       - name: web
-        image: devstore-web:latest   # will be updated by pipeline
+        image: 747549198981.dkr.ecr.ap-southeast-2.amazonaws.com/devstore-web:latest
         ports:
         - containerPort: 3000
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devstore-api
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: devstore-api
+  template:
+    metadata:
+      labels:
+        app: devstore-api
+    spec:
+      containers:
+      - name: api
+        image: 747549198981.dkr.ecr.ap-southeast-2.amazonaws.com/devstore-api:latest
+        ports:
+        - containerPort: 4000
