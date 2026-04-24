@@ -19,68 +19,109 @@ pipeline {
     string(name: 'K8S_API_CONTAINER', defaultValue: 'api', description: 'API container name')
   }
 
-environment {
-  IMAGE_TAG = "${env.GIT_COMMIT ? env.GIT_COMMIT.take(7) : "build-${env.BUILD_NUMBER}"}"
-  ECR_REGISTRY = "${params.AWS_ACCOUNT_ID}.dkr.ecr.${params.AWS_REGION}.amazonaws.com"
-  WEB_IMAGE = "${ECR_REGISTRY}/${params.ECR_REPO_WEB}"
-  API_IMAGE = "${ECR_REGISTRY}/${params.ECR_REPO_API}"
-}
+  environment {
+    IMAGE_TAG = "${env.GIT_COMMIT ? env.GIT_COMMIT.take(7) : "build-${env.BUILD_NUMBER}"}"
+    ECR_REGISTRY = "${params.AWS_ACCOUNT_ID}.dkr.ecr.${params.AWS_REGION}.amazonaws.com"
+    WEB_IMAGE = "${ECR_REGISTRY}/${params.ECR_REPO_WEB}"
+    API_IMAGE = "${ECR_REGISTRY}/${params.ECR_REPO_API}"
+  }
 
-stage('Push Images to ECR') {
-  steps {
-    retry(3) {
-      sh '''
-        set -e
+  stages {
 
-        echo "Pushing Web Image..."
-        docker push $WEB_IMAGE:$IMAGE_TAG
-        docker push $WEB_IMAGE:latest
+    stage('Checkout Code') {
+      steps {
+        checkout scm
+      }
+    }
 
-        echo "Pushing API Image..."
-        docker push $API_IMAGE:$IMAGE_TAG
-        docker push $API_IMAGE:latest
-      '''
+    stage('Build Docker Images') {
+      steps {
+        sh '''
+          set -e
+
+          echo "Building Web Image..."
+          docker build -f docker/web.Dockerfile \
+            -t $WEB_IMAGE:$IMAGE_TAG \
+            -t $WEB_IMAGE:latest .
+
+          echo "Building API Image..."
+          docker build -f docker/api.Dockerfile \
+            -t $API_IMAGE:$IMAGE_TAG \
+            -t $API_IMAGE:latest .
+        '''
+      }
+    }
+
+    stage('Login to AWS ECR') {
+      steps {
+        withCredentials([
+          [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-jenkins']
+        ]) {
+          sh '''
+            set -e
+
+            aws sts get-caller-identity
+
+            aws ecr get-login-password --region $AWS_REGION | \
+            docker login --username AWS --password-stdin $ECR_REGISTRY
+          '''
+        }
+      }
+    }
+
+    stage('Push Images to ECR') {
+      steps {
+        sh '''
+          set -e
+
+          echo "Pushing Web Image..."
+          docker push $WEB_IMAGE:$IMAGE_TAG
+          docker push $WEB_IMAGE:latest
+
+          echo "Pushing API Image..."
+          docker push $API_IMAGE:$IMAGE_TAG
+          docker push $API_IMAGE:latest
+        '''
+      }
+    }
+
+    stage('Deploy to EKS') {
+      steps {
+        withCredentials([
+          [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-jenkins']
+        ]) {
+          sh '''
+            set -e
+
+            echo "Updating kubeconfig..."
+            aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
+
+            echo "Ensuring namespace exists..."
+            kubectl get ns $K8S_NAMESPACE || kubectl create ns $K8S_NAMESPACE
+
+            echo "Applying Kubernetes manifests (if any)..."
+            if [ -d "k8s" ]; then
+              kubectl apply -f k8s/ -n $K8S_NAMESPACE
+            fi
+
+            echo "Updating Web Deployment Image..."
+            kubectl set image deployment/$K8S_WEB_DEPLOYMENT \
+              $K8S_WEB_CONTAINER=$WEB_IMAGE:$IMAGE_TAG \
+              -n $K8S_NAMESPACE
+
+            echo "Updating API Deployment Image..."
+            kubectl set image deployment/$K8S_API_DEPLOYMENT \
+              $K8S_API_CONTAINER=$API_IMAGE:$IMAGE_TAG \
+              -n $K8S_NAMESPACE
+
+            echo "Waiting for rollout..."
+            kubectl rollout status deployment/$K8S_WEB_DEPLOYMENT -n $K8S_NAMESPACE --timeout=180s || exit 1
+            kubectl rollout status deployment/$K8S_API_DEPLOYMENT -n $K8S_NAMESPACE --timeout=180s || exit 1
+          '''
+        }
+      }
     }
   }
-}
-
-stage('Deploy to EKS') {
-  steps {
-    withCredentials([
-      [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-jenkins']
-    ]) {
-      sh '''
-        set -e
-
-        echo "Updating kubeconfig..."
-        aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
-
-        echo "Ensuring namespace exists..."
-        kubectl get ns $K8S_NAMESPACE >/dev/null 2>&1 || \
-        kubectl create ns $K8S_NAMESPACE
-
-        echo "Applying manifests..."
-        if [ -d "k8s" ]; then
-          kubectl apply -f k8s/ -n $K8S_NAMESPACE
-        fi
-
-        echo "Updating Web Deployment..."
-        kubectl set image deployment/$K8S_WEB_DEPLOYMENT \
-          $K8S_WEB_CONTAINER=$WEB_IMAGE:$IMAGE_TAG \
-          -n $K8S_NAMESPACE
-
-        echo "Updating API Deployment..."
-        kubectl set image deployment/$K8S_API_DEPLOYMENT \
-          $K8S_API_CONTAINER=$API_IMAGE:$IMAGE_TAG \
-          -n $K8S_NAMESPACE
-
-        echo "Waiting for rollout..."
-        kubectl rollout status deployment/$K8S_WEB_DEPLOYMENT -n $K8S_NAMESPACE --timeout=180s
-        kubectl rollout status deployment/$K8S_API_DEPLOYMENT -n $K8S_NAMESPACE --timeout=180s
-      '''
-    }
-  }
-}
 
   post {
     success {
