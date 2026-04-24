@@ -8,7 +8,7 @@ pipeline {
 
   parameters {
     string(name: 'AWS_REGION', defaultValue: 'ap-southeast-2', description: 'AWS region')
-    string(name: 'AWS_ACCOUNT_ID', defaultValue: '747549198981', description: 'AWS account ID')
+    string(name: 'AWS_ACCOUNT_ID', defaultValue: '517355797272', description: 'AWS account ID')
     string(name: 'ECR_REPO_WEB', defaultValue: 'devstore-web', description: 'Web repo name')
     string(name: 'ECR_REPO_API', defaultValue: 'devstore-api', description: 'API repo name')
     string(name: 'EKS_CLUSTER_NAME', defaultValue: 'devstore-eks', description: 'EKS cluster name')
