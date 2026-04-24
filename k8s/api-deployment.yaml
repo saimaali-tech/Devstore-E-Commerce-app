@@ -21,6 +21,14 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 4000
+
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://devstore:devstore@postgres-service:5432/devstore"
+
+            - name: NODE_ENV
+              value: "production"
+
           resources:
             requests:
               cpu: "100m"
@@ -28,17 +36,3 @@ spec:
             limits:
               cpu: "300m"
               memory: "256Mi"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: devstore-api-service
-  namespace: default
-spec:
-  selector:
-    app: devstore-api
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 4000
-  type: ClusterIP
